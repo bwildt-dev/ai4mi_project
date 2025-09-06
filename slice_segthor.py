@@ -123,7 +123,7 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
             preserve_range=True).astype(np.uint8)
 
         img_file = f"{id_}_{z_id:04d}.png"
-        skimg.io.imsave(img_dir / img_file, z_img_slice_png)
+        skimg.io.imsave(img_dir / img_file, z_img_slice_png, check_contrast=False)
 
         if gt is not None:
             z_gt_slice = gt[:, :, z_id]
@@ -140,7 +140,7 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
             assert set(np.unique(z_gt_slice_png)) <= {0, 63, 126, 189, 252}, np.unique(z_gt_slice_png)
 
             gt_file = f"{id_}_{z_id:04d}.png"
-            skimg.io.imsave(gt_dir / gt_file, z_gt_slice_png)
+            skimg.io.imsave(gt_dir / gt_file, z_gt_slice_png, check_contrast=False)
 
     return ct_dx, ct_dy, ct_dz
 
@@ -155,7 +155,6 @@ Requirements:
 """
 
 def get_splits(src_path: Path, retains: int) -> tuple[list[str], list[str]]:
-    # TODO: your code here
     if os.path.exists(src_path / "train/.DS_Store"):
         os.remove(src_path / "train/.DS_Store")
     train_dirs: list[str] = os.listdir(src_path / "train")
