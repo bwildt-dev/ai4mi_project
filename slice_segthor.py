@@ -3,11 +3,14 @@ import random
 import argparse
 import warnings
 from pathlib import Path
+import nibabel as nib
 from functools import partial
 from multiprocessing import Pool
 from typing import Callable
-
+import os
+import skimage as skimg
 import numpy as np
+
 
 from utils import map_, tqdm_
 
@@ -19,9 +22,16 @@ Goal: normalize an image array to the range [0, 255]  and return it as a dtype=u
 Which is compatible with standard image formats (PNG)
 """
 def norm_arr(img: np.ndarray) -> np.ndarray:
-    # TODO: your code here
+    hu_min, hu_max = img.min(), img.max()
+    png_min, png_max = np.float64(0.0), np.float64(255.0)
 
-    raise NotImplementedError("Implement norm_arr")
+    norm = (img - hu_min) / (hu_max - hu_min)
+    scaled = norm * (png_max - png_min) + png_min
+
+    if scaled.min() != png_min or scaled.max() != png_max:
+        warnings.warn("Scaled image is out of range")
+
+    return scaled.astype(np.uint8)
 
 
 def sanity_ct(ct, x, y, z, dx, dy, dz) -> bool:
@@ -76,12 +86,63 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
 
     id_path: Path = source_path / ("train" if not test_mode else "test") / id_
     ct_path: Path = (id_path / f"{id_}.nii.gz")
+    gt_path: Path = (id_path / "GT.nii.gz")
     assert id_path.exists()
-    assert ct_path.exists()
+    assert ct_path.exists(), ct_path
 
-    # --------- FILL FROM HERE -----------
+    ct_img = nib.load(ct_path)
 
-    raise NotImplementedError("Implement slice_patient")
+    ct = ct_img.get_fdata().astype(np.int16)
+    ct_x, ct_y, ct_z = ct.shape
+
+    ct_dx, ct_dy, ct_dz = ct_img.header.get_zooms()[:3]
+
+    assert sanity_ct(ct, ct_x, ct_y, ct_z, ct_dx, ct_dy, ct_dz), f"CT sanity failed for {id_}"
+
+    ct = norm_arr(ct)
+
+    gt = None
+    if not test_mode:
+        gt_img = nib.load(gt_path)
+        gt = gt_img.get_fdata().astype(np.uint8)
+        assert sanity_gt(gt, ct), f"GT sanity failed for {id_}"
+
+    img_dir = dest_path / "img"
+    gt_dir = dest_path / "gt"
+
+    img_dir.mkdir(parents=True, exist_ok=True)
+    if not test_mode:
+        gt_dir.mkdir(parents=True, exist_ok=True)
+
+
+    for z_id in range(ct_z):
+        z_img_slice = ct[:, :, z_id]
+        z_img_slice_png = skimg.transform.resize(z_img_slice, shape, order=1,
+            mode="edge",
+            anti_aliasing=True,
+            preserve_range=True).astype(np.uint8)
+
+        img_file = f"{id_}_{z_id:04d}.png"
+        skimg.io.imsave(img_dir / img_file, z_img_slice_png)
+
+        if gt is not None:
+            z_gt_slice = gt[:, :, z_id]
+            z_gt_slice_png = skimg.transform.resize(
+                z_gt_slice,
+                shape,
+                order=0,
+                mode="edge",
+                anti_aliasing=False,
+                preserve_range=True
+            )
+            z_gt_slice_png = (z_gt_slice_png * 63).astype(np.uint8)
+            assert z_gt_slice_png.dtype == np.uint8, z_gt_slice_png.dtype
+            assert set(np.unique(z_gt_slice_png)) <= {0, 63, 126, 189, 252}, np.unique(z_gt_slice_png)
+
+            gt_file = f"{id_}_{z_id:04d}.png"
+            skimg.io.imsave(gt_dir / gt_file, z_gt_slice_png)
+
+    return ct_dx, ct_dy, ct_dz
 
 
 """
@@ -95,8 +156,18 @@ Requirements:
 
 def get_splits(src_path: Path, retains: int) -> tuple[list[str], list[str]]:
     # TODO: your code here
+    if os.path.exists(src_path / "train/.DS_Store"):
+        os.remove(src_path / "train/.DS_Store")
+    train_dirs: list[str] = os.listdir(src_path / "train")
+    for dirs in train_dirs:
+        print(dirs)
 
-    raise NotImplementedError("Implement get_splits")
+    random.shuffle(train_dirs)
+    val_ids: list[str] = train_dirs[:retains]
+    train_ids: list[str] = train_dirs[retains:]
+    return train_ids, val_ids
+
+
 
 def main(args: argparse.Namespace):
     src_path: Path = Path(args.source_dir)
