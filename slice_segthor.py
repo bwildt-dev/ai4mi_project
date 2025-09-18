@@ -120,7 +120,7 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
         gt_dir.mkdir(parents=True, exist_ok=True)
 
 
-    # Slice the 3D volumes into 2D slices, resize to given shape`, and save PNGs.
+    # Slice the 3D volumes into 2D slices, resize to given shape, and save PNGs.
     for z_id in range(ct_z):
         z_img_slice = ct[:, :, z_id]
         z_img_slice_png = skimg.transform.resize(z_img_slice, shape, order=1,
