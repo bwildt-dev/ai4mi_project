@@ -67,38 +67,41 @@ def sanity_check(to_transform: list[Path]) -> None:
     for file_path in to_transform:
         assert file_path.exists(), f"File {file_path} does not exist."
 
-def reverse_tampering(tampered_gt_paths: list[Path]) -> None:
-    restore_m = get_restore_matrix()
+def restore(tampered_gt_path: Path, restore_m: np.ndarray) -> None:
     heart_label = 2
 
-    print(f"Processing {len(tampered_gt_paths)} images...")
+    gt_tamp = nib.load(tampered_gt_path)
+    gt_tamp_data = gt_tamp.get_fdata().astype(np.uint8)
+    heart_seg = np.zeros_like(gt_tamp_data)
+    heart_seg[gt_tamp_data == heart_label] = heart_label
+    heart_restored = ndi.affine_transform(heart_seg, restore_m, order=0)
 
-    for tampered_gt_path in tqdm(tampered_gt_paths):
-        gt_tamp = nib.load(tampered_gt_path)
-        gt_tamp_data = gt_tamp.get_fdata().astype(np.uint8)
-        heart_seg = np.zeros_like(gt_tamp_data)
-        heart_seg[gt_tamp_data == heart_label] = heart_label
-        heart_restored = ndi.affine_transform(heart_seg, restore_m, order=0)
+    gt_fixed = gt_tamp_data.copy()
+    gt_fixed[gt_fixed == heart_label] = 0
+    gt_fixed[heart_restored == heart_label] = heart_label
+    gt_fixed = gt_fixed.astype(np.uint8)
 
-        gt_fixed = gt_tamp_data.copy()
-        gt_fixed[gt_fixed == heart_label] = 0
-        gt_fixed[heart_restored == heart_label] = heart_label
-        gt_fixed = gt_fixed.astype(np.uint8)
-
-        restored_gt = nib.Nifti1Image(gt_fixed, gt_tamp.affine, gt_tamp.header)
-        path_to_save = Path(tampered_gt_path.parent / "GT_fixed.nii.gz")
-        nib.save(restored_gt, path_to_save)
+    restored_gt = nib.Nifti1Image(gt_fixed, gt_tamp.affine, gt_tamp.header)
+    path_to_save = Path(tampered_gt_path.parent / "GT_fixed.nii.gz")
+    nib.save(restored_gt, path_to_save)
 
 
+def parallel_restore(tampered_gt_paths: list[Path], workers: int | None = None) -> None:
+    if workers is None:
+        workers = min(os.cpu_count(), 12) or 1
+    restore_m = get_restore_matrix()
+    print(f"Restoring {len(tampered_gt_paths)} images with {workers} workers...")
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        jobs = [ex.submit(restore, path, restore_m) for path in tampered_gt_paths]
+        for job in tqdm(as_completed(jobs), total=len(jobs), desc="Restoring"):
+            job.result()
 
 
 def main(args: argparse.Namespace) -> None:
     src_path: Path = Path(args.source_dir)
     gt_paths: list[Path] = get_files_to_transform(src_path)
     sanity_check(gt_paths)
-    reverse_tampering(gt_paths)
-
-
+    parallel_restore(gt_paths, 8)
 
 
 
