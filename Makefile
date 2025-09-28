@@ -29,3 +29,12 @@ data/SEGTHOR: data/segthor_train
 	python $(CFLAGS) slice_segthor.py --source_dir $^ --dest_dir $@_tmp \
 		--shape 256 256 --retain 10
 	mv $@_tmp $@
+
+
+results/plots: results/segthor/ce/dice_tra.npy results/segthor/ce/dice_val.npy results/segthor/ce/loss_tra.npy results/segthor/ce/loss_val.npy
+	$(info $(green)Generating plots with plot.py for each metric file$(reset))
+	for f in $^; do \
+  		fname=$$(basename "$$f" .npy); \
+  		python plot.py --metric_file "$$f" --dest "$@/$$fname.png" --headless; \
+	done
+	python plots_to_pdf.py $@

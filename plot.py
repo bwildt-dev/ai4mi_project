@@ -56,6 +56,7 @@ def run(args: argparse.Namespace) -> None:
 
     fig.tight_layout()
     if args.dest:
+        args.dest.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(args.dest)
 
     if not args.headless:

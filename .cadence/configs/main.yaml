@@ -1,0 +1,52 @@
+project_name: Default
+working_dir: "."
+cmd:
+- python -O main.py --dataset SEGTHOR_CLEAN --mode full --epoch 25 --dest results/segthor/ce
+  --gpu
+provisioning:
+  gpu_type: a10g
+  gpu_count: 1
+  cpu_count: 32
+  ram: 128
+  blank: false
+teamcity:
+  url: https://api.cadence.jetbrains.com
+  build_conf_id: D8e8fc06ae214f85a30787b348dd47b2_JetTrain
+env:
+  variables:
+    PYTHONUNBUFFERED: "1"
+  python:
+    pip:
+      requirements_path: requirements.txt
+    version: 3.12.7
+  secrets:
+    variables: {}
+    ssh_keys: []
+  aws:
+    sync_config: false
+    sync_credentials: false
+    sync_cache: false
+project_sync:
+  local:
+    root: "."
+    storage_name: Cadence Storage
+    uri: ""
+    exclude:
+    - /.venv/**
+    - /data/**
+    include:
+    - /data/SEGTHOR_CLEAN/**
+    sync_back: false
+    snapshots: true
+    storage_type: DEFAULT
+inputs: []
+outputs:
+- type: OUTPUT
+  storage_name: Cadence Storage
+  uri: ""
+  path: "."
+  acceleration: false
+  storage_type: DEFAULT
+mounts: []
+storages: []
+description: ""

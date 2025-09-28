@@ -89,7 +89,7 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
 
     id_path: Path = source_path / ("train" if not test_mode else "test") / id_
     ct_path: Path = (id_path / f"{id_}.nii.gz")
-    gt_path: Path = (id_path / "GT.nii.gz")
+    gt_path: Path = (id_path / "GT_fixed.nii.gz")
     assert id_path.exists()
     assert ct_path.exists(), ct_path
 
