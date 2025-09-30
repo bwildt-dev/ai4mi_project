@@ -1,5 +1,7 @@
+charset-normalizer==3.4.3
 contourpy==1.3.3
 cycler==0.12.1
+distorch @ git+https://github.com/jeromerony/distorch.git@80f190cb46632b1f05dc1a608f6b368f89dbcea2
 filelock==3.19.1
 fonttools==4.59.2
 fsspec==2025.9.0
@@ -19,6 +21,7 @@ packaging==25.0
 pillow==11.3.0
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
+reportlab==4.4.4
 scikit-image==0.25.2
 scipy==1.16.1
 scipy-stubs==1.16.2.0

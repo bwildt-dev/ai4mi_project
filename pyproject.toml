@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "distorch",
     "matplotlib>=3.10.6",
     "nibabel>=5.3.2",
     "numpy>=2.3.2",
@@ -16,3 +17,6 @@ dependencies = [
     "torchvision>=0.23.0",
     "tqdm>=4.67.1",
 ]
+
+[tool.uv.sources]
+distorch = { git = "https://github.com/jeromerony/distorch.git" }

@@ -1,0 +1,55 @@
+project_name: Default
+working_dir: "."
+cmd:
+- 'python -O compute_metrics.py   --ref_folder data/stitched/val/gt   --pred_folder
+  data/stitched/val/pred   --ref_extension .nii.gz   --pred_extension .nii.gz   --num_classes
+  5   --metrics 3d_dice 3d_hd95   --background_class 0   --num_workers 24   --overwrite   --chill   --save_folder
+  results/metrics_val '
+provisioning:
+  gpu_type: a10g
+  gpu_count: 1
+  cpu_count: 32
+  ram: 128
+  blank: false
+teamcity:
+  url: https://api.cadence.jetbrains.com
+  build_conf_id: D8e8fc06ae214f85a30787b348dd47b2_JetTrain
+env:
+  variables:
+    PYTHONUNBUFFERED: "1"
+  python:
+    pip:
+      requirements_path: requirements.txt
+    version: 3.12.7
+  secrets:
+    variables: {}
+    ssh_keys: []
+  aws:
+    sync_config: false
+    sync_credentials: false
+    sync_cache: false
+project_sync:
+  local:
+    root: "."
+    storage_name: Cadence Storage
+    uri: ""
+    exclude:
+    - /.venv/**
+    - /data/**
+    - /results/**
+    include:
+    - /data/stitched/**
+    sync_back: false
+    snapshots: true
+    storage_type: DEFAULT
+inputs: []
+outputs:
+- type: OUTPUT
+  storage_name: Cadence Storage
+  uri: ""
+  path: "."
+  acceleration: false
+  storage_type: DEFAULT
+mounts: []
+storages: []
+description: "Rerun from #30014"

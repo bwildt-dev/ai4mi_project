@@ -9,9 +9,13 @@ import skimage
 import skimage as skimg
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future
 
-
-
 def get_groups(data_path: Path, group_regex: re.Pattern) -> dict[str, list[tuple[int, Path]]]:
+    """
+    Function that groups files from data folder by patient ID and sorts them by z-index.
+    :param data_path: Path to the folder containing the sliced image data.
+    :param group_regex: Regex pattern to extract patient ID from filenames.
+    :return: Dictionary mapping patient IDs to lists of (z-index, file path).
+    """
     groups = defaultdict(list)
     for file in data_path.iterdir():
         match = group_regex.match(file.stem)
@@ -26,23 +30,26 @@ def get_groups(data_path: Path, group_regex: re.Pattern) -> dict[str, list[tuple
         groups[patient_id].sort(key=lambda x: x[0])
     return groups
 
-def extract_index(name: str) -> int:
-    match = re.search(r'(\d+)(?=\D*$)', name)
-    return int(match.group(1)) if match else None
 
-
-def stitch_patient(patient_id, patient_slices, dest_folder: Path, num_classes: int, source_pattern: str):
+def stitch_patient(patient_id, patient_slices, dest_folder: Path, num_classes: int, source_pattern: str) -> None:
+    """
+    Function that stitches 2D slices back into a 3D volume for a single patient and saves it as a NIfTI file.
+    :param patient_id: Patient identifier.
+    :param patient_slices: List of (z-index, file path) for the patient's slices.
+    :param dest_folder: Destination folder to save the stitched NIfTI file.
+    :param num_classes:  Number of segmentation classes.
+    :param source_pattern: Pattern for original scans
+    :return: None
+    """
     dest_folder.mkdir(parents=True, exist_ok=True)
 
     source_path = source_pattern.format(id_=patient_id)
     gt = nib.load(source_path)
     og_size = gt.shape
-
     voxel = np.zeros(og_size, dtype=np.uint8)
-
     for z_index, file in patient_slices:
         slice_png = skimg.io.imread(file).astype(np.uint8)
-        slice_png = np.clip(slice_png, 0, num_classes - 1)
+        slice_png = (slice_png // 63).astype(np.uint8)
         if slice_png.shape != og_size[:2]:
             slice_png = skimage.transform.resize(
                 slice_png, og_size[:2], order=0, preserve_range=True, anti_aliasing=False
@@ -56,6 +63,10 @@ def stitch_patient(patient_id, patient_slices, dest_folder: Path, num_classes: i
 
 
 def get_args():
+    """
+    Function to parse command line arguments.
+    :return: Namespace with parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Stitch sliced segmentations into full scans")
     parser.add_argument('--data_folder', type=Path, required=True, help='Folder with sliced data')
     parser.add_argument('--dest_folder', type=Path, required=True, help='Destination folder for stitched data')
@@ -66,7 +77,12 @@ def get_args():
     print(args)
     return args
 
-def main(args):
+def main(args) -> None:
+    """
+    Main function to orchestrate the stitching process.
+    :param args: Parsed command line arguments.
+    :return: None
+    """
     re_pattern = re.compile(args.grp_regex)
     groups = get_groups(args.data_folder, re_pattern)
     print(f'Found {len(groups)} patients')
